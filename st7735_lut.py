@@ -83,9 +83,12 @@ class ST7735(framebuf.FrameBuffer):
         sleep_ms(120)
         for command, data in (
             (COLMOD,  b"\x05"),
-            (MADCTL,  pack('>B', madctl)),
-            (INVON,   None)):
+            (MADCTL,  pack('>B', madctl))):
             self._write(command, data)
+        if self.width==80 or self.height==80:
+            self._write(INVON, None)
+        else:
+            self._write(INVOFF, None)
         buf=bytearray(128)
         for i in range(32):
             buf[i]=i*2
@@ -127,13 +130,22 @@ class ST7735(framebuf.FrameBuffer):
             else:
                 byte_lut[i*2]=0
                 byte_lut[i*2+1]=0
-        for h in range(self.width):
-            if self.rot==0 or self.rot==2:
-                self._write(CASET,pack(">HH", 26, self.width+26-1))
-                self._write(RASET,pack(">HH", h+1, h+1))
+        for h in range(self.height  if (self.rot==0 or self.rot==2) else self.width):
+            if self.width==80 or self.height==80:
+                if self.rot==0 or self.rot==2:
+                    self._write(CASET,pack(">HH", 26, self.width+26-1))
+                    self._write(RASET,pack(">HH", h+1, h+1))
+                else:
+                    self._write(CASET,pack(">HH", 1, self.width+1-1))
+                    self._write(RASET,pack(">HH", h+26, h+26))
             else:
-                self._write(CASET,pack(">HH", 1, self.width+1-1))
-                self._write(RASET,pack(">HH", h+26, h+26))
+                if self.rot==0 or self.rot==2:
+                    self._write(CASET,pack(">HH", 0, self.width-1))
+                    self._write(RASET,pack(">HH", h, h))
+                else:
+                    self._write(CASET,pack(">HH", 0, self.width-1))
+                    self._write(RASET,pack(">HH", h, h))
+                
             line=self.line_LUT(h,byte_lut)
             self._write(RAMWR,line)
     def rgb(self,r,g,b):
